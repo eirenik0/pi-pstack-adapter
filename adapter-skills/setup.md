@@ -40,8 +40,9 @@ keeps them as panel roles.
 Upstream defaults each panel to one Claude Fable, one Claude Opus, and one Gemini model. A panel
 left unset uses `judgment`, then `general`, so it spans two families only when those roles do.
 `arena` takes its judge from the pool only when the model is from a vendor other than the
-session model's, and it counts Fable and the other Claude models as one vendor, so a pool on the
-session's vendor skips the judge. The status report warns when
+session model's, and it counts Fable and the other Claude models as one vendor. When no pool entry
+qualifies, it tries `judgment`, then `general`, and skips the judge only when neither does. The
+status report warns when
 a panel's seats all use one model.
 
 A panel value lists entries in order. An entry is a model id, optionally with a thinking level,

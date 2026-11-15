@@ -104,7 +104,7 @@ test("arena is adapted after a pstack 0.15.36 run with a cross-family judge, and
   assert.match(entry.note ?? "", /judge must come from a model family other than the parent's/);
   assert.match(entry.note ?? "", /`judgment` and `general` roles/);
   assert.match(entry.note ?? "", /cross-judge pool to the `arena-cross-judge-pool` panel role, which uses `judgment`, then `general` while unset/);
-  assert.match(entry.note ?? "", /skips the judge, picks the base alone/);
+  assert.match(entry.note ?? "", /When no entry qualifies, arena tries `judgment`, then `general`, and only when neither is from another vendor does it skip the judge/);
   assert.match(entry.note ?? "", /When the parent does not know its model, arena tries the pool in order anyway and says the vendor check did not run\./);
   assert.match(entry.note ?? "", /since pstack 0\.15\.42 from another vendor, where Fable and the other Claude models are one vendor/);
   assert.match(entry.note ?? "", /The pstack 0\.15\.42 vendor rule has not run in Pi\./);

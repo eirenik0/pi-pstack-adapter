@@ -140,6 +140,6 @@ test("both delegation backends distinguish pools from panels and keep the active
 
 test("an inherit panel seat runs on the session's own model even when general is configured", () => {
   const row = rowFor("| panel role lines `arena runners`");
-  assert.match(row, /comes from an `inherit` entry: start it with no `target` or `model`, so it runs on your own model and thinking even when `general` is configured/);
+  assert.match(row, /comes from an `inherit` entry: on T3, start it with no `target`; on pi-subagents, pass your own model as `model`, as \[Delegation\]\(#delegation\) says\. It then runs on your own model even when `general` is configured/);
   assert.match(row, /The `auto` and `inherit-parent` row does not apply to it\./);
 });
