@@ -216,7 +216,7 @@ function seatModels(seats: readonly PanelSeat[], ranked: boolean): Set<string> |
 }
 
 /**
- * Upstream's default panels span two model families. A panel whose seats all land on one model
+ * Upstream's default panels span several model families and two vendors. A panel whose seats all land on one model
  * lost that because of configuration, not because no other model exists, so say so where the
  * agent reads it. Families are left to the agent, which knows them better than a prefix list.
  */
@@ -232,11 +232,12 @@ export function panelWarning(panel: ResolvedPanel, config: AdapterConfig, contex
     ? `its configured entries all name ${named}`
     : `it is unset, and ${PANEL_DEFAULT_ROLES.map((role) => `\`${role}\``).join(" and ")} both resolve to ${named}`;
   const ranked = usable.some((seat) => seat.kind === "choice") ? " with the ranked picks, unless the delegating agent overrides the ranking," : ",";
-  return `Every seat of \`${panel.role}\` runs on ${named}${ranked} because ${cause}, ${pool ? poolEffect(panel, config, model, context) : "so the panel has one model and no second family"}. This comes from the adapter configuration, not from which models are available. Run \`/skill:${config.namespace}-setup\` to put this panel on two model families, as upstream's defaults do.`;
+  return `Every seat of \`${panel.role}\` runs on ${named}${ranked} because ${cause}, ${pool ? poolEffect(panel, config, model, context) : "so the panel has one model and no second family"}. This comes from the adapter configuration, not from which models are available. Run \`/skill:${config.namespace}-setup\` to put this panel on models from two vendors, as upstream's defaults do.`;
 }
 
 /**
- * Arena's judge is never from the session's family. When no pool entry qualifies, upstream tries
+ * Arena's judge is never from the session's vendor, which since pstack 0.15.42 counts Fable and the
+ * other Claude models as one. When no pool entry qualifies, upstream tries
  * its default pool, which here is `judgment`, then `general`, before it skips the judge.
  */
 function poolEffect(panel: ResolvedPanel, config: AdapterConfig, model: string | undefined, context: ResolutionContext): string {
@@ -245,7 +246,7 @@ function poolEffect(panel: ResolvedPanel, config: AdapterConfig, model: string |
   const lead =
     model === PARENT_MODEL
       ? "and an `inherit` entry never judges, so arena"
-      : `so a session on the family of \`${model}\` gets no judge from the pool, and arena`;
+      : `so a session on the vendor of \`${model}\` gets no judge from the pool, and arena`;
   const sameFallback = fallbackModels?.size === 1 && fallbackModels.has(model ?? PARENT_MODEL);
   return sameFallback
     ? `${lead} skips the judge`

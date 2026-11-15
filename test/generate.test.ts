@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync, lstatSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
-import { extractUpstreamBody, generate, wrapper } from "../src/generate.ts";
+import { extractUpstreamBody, generate, hostMappingDocument, wrapper } from "../src/generate.ts";
 import { CERTIFIED } from "../src/certified.ts";
 import { isThinkingLevel } from "../src/config.ts";
 import { ADAPTER_SKILLS, MODEL_ROLES, SKILL_REGISTRY, entryFor } from "../src/registry.ts";
@@ -407,10 +407,7 @@ test("the host mapping covers Cursor vocabulary new in pstack 0.15.23", () => {
 });
 
 test("the host mapping covers the default models and setup marker new in pstack 0.15.42", () => {
-  const root = makeTempDir("host-mapping-01542");
-  const pluginDir = writePluginFixture(root, { skills: [{ name: "unslop", body: "b\n" }] });
-  const result = run({ pluginDir, cacheRoot: join(root, "cache") });
-  const mapping = readFileSync(join(result.outDir, "adapter", "host-mapping.md"), "utf8");
+  const mapping = hostMappingDocument("pistack", "t3");
   const rowFor = (start: string) => mapping.split("\n").find((line) => line.startsWith(start)) ?? "";
 
   assert.match(rowFor("| `claude-opus-5-5-xhigh`"), /`claude-fable-5-2-max`, `gemini-4-carbon-high`.* \| the role models configured by `\/skill:pistack-setup`/);

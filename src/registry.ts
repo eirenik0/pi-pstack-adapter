@@ -113,7 +113,7 @@ export const MODEL_ROLES: readonly string[] = [
 
 /**
  * Upstream's panel lines, such as `arena runners`, hold a list of models with one seat per entry.
- * Upstream defaults each to two model families. A panel left unset here uses the roles in
+ * Upstream defaults each to several model families from two vendors. A panel left unset here uses the roles in
  * `PANEL_DEFAULT_ROLES`, so it spans two families only when those roles do.
  */
 export const PANEL_ROLES: readonly string[] = [
