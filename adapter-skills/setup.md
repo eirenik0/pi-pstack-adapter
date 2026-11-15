@@ -37,10 +37,11 @@ keeps them as panel roles.
 | `architect-runners` | `architect`'s design candidates |
 | `interrogate-reviewers` | `interrogate`'s adversaries |
 
-Upstream defaults each panel to two model families, one Claude model and one Grok model. A panel
+Upstream defaults each panel to one Claude Fable, one Claude Opus, and one Gemini model. A panel
 left unset uses `judgment`, then `general`, so it spans two families only when those roles do.
-`arena` takes its judge from the pool only when the model is from a family other than the
-session's model, so a pool on the session's family skips the judge. The status report warns when
+`arena` takes its judge from the pool only when the model is from a vendor other than the
+session model's, and it counts Fable and the other Claude models as one vendor, so a pool on the
+session's vendor skips the judge. The status report warns when
 a panel's seats all use one model.
 
 A panel value lists entries in order. An entry is a model id, optionally with a thinking level,

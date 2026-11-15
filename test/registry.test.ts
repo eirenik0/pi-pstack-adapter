@@ -105,7 +105,9 @@ test("arena is adapted after a pstack 0.15.36 run with a cross-family judge, and
   assert.match(entry.note ?? "", /`judgment` and `general` roles/);
   assert.match(entry.note ?? "", /cross-judge pool to the `arena-cross-judge-pool` panel role, which uses `judgment`, then `general` while unset/);
   assert.match(entry.note ?? "", /skips the judge, picks the base alone/);
-  assert.match(entry.note ?? "", /When the parent does not know its model, arena tries the pool in order anyway and says the family check did not run\./);
+  assert.match(entry.note ?? "", /When the parent does not know its model, arena tries the pool in order anyway and says the vendor check did not run\./);
+  assert.match(entry.note ?? "", /since pstack 0\.15\.42 from another vendor, where Fable and the other Claude models are one vendor/);
+  assert.match(entry.note ?? "", /The pstack 0\.15\.42 vendor rule has not run in Pi\./);
   assert.equal(docsRow("arena"), `| \`arena\` | \`/skill:pistack-arena\` | \`delegation\` | \`git\` | ${entry.note} |`);
 });
 
@@ -168,6 +170,23 @@ test("reflect and automate-me stay experimental, because their create-skill step
     assert.equal(docsRow(name)?.endsWith(` | ${entryFor(name).note} |`), true, name);
     assert.ok(docsSection("experimental")?.includes(docsRow(name) ?? "\0"), name);
   }
+});
+
+test("why loses its delegation gate at pstack 0.15.42, while how and teach keep theirs", () => {
+  const why = entryFor("why");
+  assert.equal(why.tier, "dependency-gated");
+  assert.deepEqual(why.capabilities, []);
+  assert.deepEqual(why.executables, ["git", "gh"]);
+  assert.match(why.note ?? "", /Since pstack 0\.15\.42 it spawns no subagents\..*The inline path has not run in Pi\./);
+  const how = entryFor("how");
+  assert.equal(how.tier, "dependency-gated");
+  assert.deepEqual(how.capabilities, ["delegation"]);
+  assert.match(how.note ?? "", /one read-only subagent/);
+  const teach = entryFor("teach");
+  assert.deepEqual(teach.capabilities, ["delegation"]);
+  assert.match(teach.note ?? "", /Check why's prerequisites too\./);
+  assert.equal(docsRow("why"), `| \`why\` | \`/skill:pistack-why\` | - | \`git\`, \`gh\` | ${why.note} |`);
+  for (const name of ["why", "how", "teach"]) assert.ok(docsSection("dependency-gated")?.includes(docsRow(name) ?? "\0"), name);
 });
 
 test("every tier heading in the docs counts the registry's skills in that tier", async () => {

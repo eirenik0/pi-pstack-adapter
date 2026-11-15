@@ -35,8 +35,9 @@ test("every Cursor term matches the upstream wording it was ported for", () => {
     "`resume`": ["pass `resume` with the agent id"],
     "`file_attachments`": ["file_attachments"],
     "`claude-opus-5-5-xhigh`": ["default `claude-opus-5-5-xhigh`"],
-    "`grok-4.7-xhigh-fast`": ["default `grok-4.7-xhigh-fast`"],
+    "`grok-*`": ["default `grok-4.7-xhigh-fast`"],
     "`gpt-*`": ["gpt-5.6-sol-max"],
+    "`gemini-4-carbon-high`": ["one runner each on `claude-fable-5-2-high`, `claude-opus-5-5-high-fast`, and `gemini-4-carbon-high`"],
     "`inherit-parent`": ["`auto` or `inherit-parent`"],
     "`~/.cursor/rules/pstack-models.mdc`": ["`~/.cursor/rules/pstack-models.mdc`"],
     "`.cursor/skills/`": ["under `.cursor/skills/`"],
@@ -54,6 +55,7 @@ test("every Cursor term matches the upstream wording it was ported for", () => {
     "Cursor `/loop`": ["using Cursor's `/loop` command", "arm `/loop 1h` to audit", "/loop until done."],
     "a skill under `plugins/cache/`": ["a skill under plugins/cache/"],
     "a Custom Mode": ["a Custom Mode"],
+    "`# defaults: 2`": ["If the rule has no `# defaults: 2` line, an older setup wrote it."],
   };
   assert.deepEqual(Object.keys(examples).sort(), CURSOR_TERMS.map((term) => term.key).sort(), "one example list per term");
   for (const term of CURSOR_TERMS) {

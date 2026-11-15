@@ -5,9 +5,9 @@
 export const CERTIFIED = {
   repo: "https://github.com/cursor/plugins",
   ref: "main",
-  commit: "c742dd61706fbacc1b95f1a20b7b988cf096ce6c",
+  commit: "bf0c7cd80abdbf7fe47b634978a7d1b4071f71a7",
   pluginPath: "pstack",
-  pstackVersion: "0.15.36",
+  pstackVersion: "0.15.42",
   skillCount: 58,
   agentCount: 2,
 } as const;
