@@ -77,7 +77,7 @@ test("a panel collapsed onto one model is reported as configuration, with the se
     assert.match(warning, /comes from the adapter configuration, not from which models are available/);
     assert.match(warning, /Run `\/skill:pistack-setup`/);
   }
-  assert.match(warn(collapsed, "arena-cross-judge-pool") ?? "", /a session on the family of `anthropic\/opus` gets no judge from the pool, and arena skips the judge\./);
+  assert.match(warn(collapsed, "arena-cross-judge-pool") ?? "", /a session on the vendor of `anthropic\/opus` gets no judge from the pool, and arena skips the judge\./);
 
   const configured = mergeConfig([layer({ "interrogate-reviewers": "openai/gpt:high openai/gpt:low" })]);
   assert.match(warn(configured, "interrogate-reviewers") ?? "", /its configured entries all name `openai\/gpt`/);

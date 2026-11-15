@@ -37,10 +37,12 @@ keeps them as panel roles.
 | `architect-runners` | `architect`'s design candidates |
 | `interrogate-reviewers` | `interrogate`'s adversaries |
 
-Upstream defaults each panel to two model families, one Claude model and one Grok model. A panel
+Upstream defaults each panel to one Claude Fable, one Claude Opus, and one Gemini model. A panel
 left unset uses `judgment`, then `general`, so it spans two families only when those roles do.
-`arena` takes its judge from the pool only when the model is from a family other than the
-session's model, so a pool on the session's family skips the judge. The status report warns when
+`arena` takes its judge from the pool only when the model is from a vendor other than the
+session model's, and it counts Fable and the other Claude models as one vendor. When no pool entry
+qualifies, it tries `judgment`, then `general`, and skips the judge only when neither does. The
+status report warns when
 a panel's seats all use one model.
 
 A panel value lists entries in order. An entry is a model id, optionally with a thinking level,
@@ -104,7 +106,9 @@ Follow these steps.
    pass it again.
 5. Set the panels. Read the `panel roles` table of `action: "status"` and show the user each
    panel's seats. When a panel's seats share one model, or one family, say so and suggest two
-   families from step 1, as upstream's defaults do. Never say a family is missing unless the
+   families from step 1, as upstream's defaults do. For `arena-cross-judge-pool`, suggest models
+   from two vendors, because a Fable and an Opus model are one vendor, so that pool has no eligible
+   judge for a Claude session, and arena falls back to `judgment`, then `general`. Never say a family is missing unless the
    step 1 list shows it. Ask whether to keep each panel or set it. For each panel the user sets,
    call `set_model` with the panel role and its entries in `model`, separated by commas, for
    example `model: "provider/model-a, provider/model-b"`. Pass `thinking` for the level of the

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync, lstatSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
-import { extractUpstreamBody, generate, wrapper } from "../src/generate.ts";
+import { extractUpstreamBody, generate, hostMappingDocument, wrapper } from "../src/generate.ts";
 import { CERTIFIED } from "../src/certified.ts";
 import { isThinkingLevel } from "../src/config.ts";
 import { ADAPTER_SKILLS, MODEL_ROLES, SKILL_REGISTRY, entryFor } from "../src/registry.ts";
@@ -345,7 +345,7 @@ test("the host mapping sends an auto or inherit-parent role to general before th
     mapping,
     /\| a role line valued `auto` or `inherit-parent` \| an unconfigured role\. Pass `pstack:<role>` as for any role\. The adapter uses the `general` role, and lets the child inherit the parent model only when `general` is unconfigured too\. \|/,
   );
-  assert.match(mapping, /`grok-4\.7-xhigh-fast`, `gpt-\*`, other Cursor model slugs/);
+  assert.match(mapping, /`gemini-4-carbon-high`, `grok-\*`, `gpt-\*`, other Cursor model slugs/);
   assert.match(mapping, /`hardest tasks` \| adapter roles .*`strongest-judgment`/);
 });
 
@@ -358,8 +358,10 @@ test("every upstream role line maps to an adapter role, so no delegate falls bac
 
   assert.doesNotMatch(mapping, /no adapter role/);
   assert.doesNotMatch(mapping, /so the child runs on the parent model/);
-  assert.match(rowFor("| role lines `how explainer`"), /\| adapter role `judgment`\. \|$/);
-  assert.match(rowFor("| role lines `how explorer`"), /`swarm workers`, and verification \| adapter role `general`\. \|$/);
+  assert.match(rowFor("| role line `reflect judgment, divergent, synthesizer`"), /\| adapter role `judgment`\. \|$/);
+  assert.match(rowFor("| role lines `reflect tooling`"), /`swarm workers`, and verification \| adapter role `general`\. \|$/);
+  // pstack 0.15.42 retired the how and why role lines, so the mapping names none of them.
+  assert.doesNotMatch(mapping, /`how explorer`|`how explainer`|`why investigators`|`why synthesizer`/);
   assert.match(rowFor("| panel role lines `arena runners`"), /`interrogate reviewers` \| adapter panel roles `arena-runners`, `arena-cross-judge-pool`, `architect-runners`, and `interrogate-reviewers`\./);
   assert.match(rowFor("| panel role lines `arena runners`"), /An unset panel uses `judgment`, then `general`/);
   assert.match(rowFor("| a delegate no role line names"), /\| adapter role `general`\. \|$/);
@@ -393,7 +395,7 @@ test("the host mapping covers Cursor vocabulary new in pstack 0.15.23", () => {
   const result = run({ pluginDir, cacheRoot: join(root, "cache") });
   const mapping = readFileSync(join(result.outDir, "adapter", "host-mapping.md"), "utf8");
 
-  assert.match(mapping, /\| `claude-opus-5-5-xhigh`, `grok-4\.7-xhigh-fast`, `gpt-\*`, other Cursor model slugs \|/);
+  assert.match(mapping, /\| `claude-opus-5-5-xhigh`, `claude-fable-5-2-max`, `gemini-4-carbon-high`, `grok-\*`, `gpt-\*`, other Cursor model slugs \|/);
   assert.doesNotMatch(mapping, /gpt-5\.6-sol-max/);
   assert.match(mapping, /\| a Custom Mode, .* \| `\/pistack-mode on`/);
   assert.match(mapping, /\| searching `~\/\.cursor\/plugins\/` .* `pistack-poteto-mode\/SKILL\.md` to any `pistack-poteto-agent`/);
@@ -402,6 +404,16 @@ test("the host mapping covers Cursor vocabulary new in pstack 0.15.23", () => {
   assert.match(mapping, /\| a link that leaves the skill directory, such as `\.\.\/\.\.\/README\.md` .* under the `plugin directory` row/);
   assert.match(mapping, /\| a public link to `https:\/\/github\.com\/cursor\/plugins\/blob\/main\/pstack\/` \| the same link with `main` replaced by the `resolved commit` row/);
   assert.match(mapping, /`\.\.\/<pi-name>\/SKILL\.md` beside the current wrapper, where `<pi-name>` is its Pi name in \[skill names\]\(skill-names\.md\)/);
+});
+
+test("the host mapping covers the default models and setup marker new in pstack 0.15.42", () => {
+  const mapping = hostMappingDocument("pistack", "t3");
+  const rowFor = (start: string) => mapping.split("\n").find((line) => line.startsWith(start)) ?? "";
+
+  assert.match(rowFor("| `claude-opus-5-5-xhigh`"), /`claude-fable-5-2-max`, `gemini-4-carbon-high`.* \| the role models configured by `\/skill:pistack-setup`/);
+  // poteto-mode asks the user to rerun setup when the rule lacks `# defaults: 2`; the adapter config never has it.
+  assert.match(rowFor("| the rule's `# defaults: 2` line"), /\| does not apply\..*Do not tell the user to rerun setup for this\. \|$/);
+  assert.match(rowFor("| panel role lines `arena runners`"), /`claude-fable-\*`, `claude-\*`, `gemini-\*`.*Apply the body's own family and vendor rules to those ids\./);
 });
 
 test("a registry skill missing from the upstream revision is reported", () => {

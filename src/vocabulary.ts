@@ -33,8 +33,9 @@ export const CURSOR_TERMS: readonly CursorTerm[] = [
   { key: "`resume`", pattern: /`resume`/ },
   { key: "`file_attachments`", pattern: /file_attachments/ },
   { key: "`claude-opus-5-5-xhigh`", pattern: /\bclaude-[a-z]+-\d/ },
-  { key: "`grok-4.7-xhigh-fast`", pattern: /\bgrok-\d/ },
+  { key: "`grok-*`", pattern: /\bgrok-\d/ },
   { key: "`gpt-*`", pattern: /\bgpt-\d/ },
+  { key: "`gemini-4-carbon-high`", pattern: /\bgemini-\d/ },
   { key: "`inherit-parent`", pattern: /inherit-parent/ },
   { key: "`~/.cursor/rules/pstack-models.mdc`", pattern: /pstack-models\.mdc/ },
   { key: "`.cursor/skills/`", pattern: /\.cursor\/skills/ },
@@ -53,6 +54,7 @@ export const CURSOR_TERMS: readonly CursorTerm[] = [
   { key: "Cursor `/loop`", pattern: /(^|[\s(`])\/loop\b/ },
   { key: "a skill under `plugins/cache/`", pattern: /plugins\/cache\// },
   { key: "a Custom Mode", pattern: /Custom Mode/ },
+  { key: "`# defaults: 2`", pattern: /# defaults: \d/ },
 ];
 
 /** One upstream Markdown file, named by its skill and its path inside the skill directory. */
