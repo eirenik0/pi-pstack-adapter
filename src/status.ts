@@ -7,7 +7,7 @@ import { type PanelSeat, type ResolutionContext, type ResolvedPanel, type RoleRe
 
 export { resolvePanel } from "./pools.ts";
 export type { PanelSeat, ResolvedPanel } from "./pools.ts";
-import { DELEGATION_BACKENDS, delegationOrder } from "./delegation.ts";
+import { DELEGATION_BACKENDS, SUBAGENTURA_ARTIFACT_TOOL, SUBAGENTURA_PANE_STATUS_TOOL, SUBAGENTURA_PANE_TOOL, delegationOrder } from "./delegation.ts";
 import type { PrerequisiteReport } from "./capabilities.ts";
 import type {
   CapabilityStatus,
@@ -364,7 +364,9 @@ export function renderCheck(
   }
   if (skill.capabilities.includes("delegation")) {
     parts.push(
-      delegation?.backend ? delegationInstruction(delegation.backend, delegation.tools) : "No delegation tool is usable in this session, so do not delegate.",
+      delegation?.backend
+        ? delegationInstruction(delegation.backend, delegation.tools, delegation.multiplexer)
+        : "No delegation tool is usable in this session, so do not delegate.",
     );
   }
   if (panels && skill.tier !== "unsupported") parts.push(panels);
@@ -381,11 +383,13 @@ const ROLE_ARGUMENT: Readonly<Record<DelegationProvider, string>> = {
   "subagentura": "pass `model: \"pstack:<role>\"`",
 };
 
-function delegationInstruction(backend: DelegationProvider, tools: readonly string[] | undefined): string {
+function delegationInstruction(backend: DelegationProvider, tools: readonly string[] | undefined, multiplexer?: string): string {
   const { tool, companions } = DELEGATION_BACKENDS[backend];
   const vetted = tools ?? [tool];
+  const pane = backend === "subagentura" && multiplexer !== undefined && vetted.includes(SUBAGENTURA_PANE_TOOL);
+  const launch = pane ? `\`${tool}\`, or \`${SUBAGENTURA_PANE_TOOL}\` in pane mode` : `\`${tool}\``;
   const lines = [
-    `Delegate only with \`${tool}\` (${backend}). The adapter resolved this backend for the session, so do not use any other delegation tool.`,
+    `Delegate only with ${launch} (${backend}). The adapter resolved this backend for the session, so do not use any other delegation tool.`,
     `Give every child a role, never your own model: ${ROLE_ARGUMENT[backend]}, using \`pstack:general\` when no other role fits. The host mapping's Delegation section has the rest of this backend's rules.`,
   ];
   if (companions.length > 0) {
@@ -397,6 +401,14 @@ function delegationInstruction(backend: DelegationProvider, tools: readonly stri
         `Do not call ${unusable.map((name) => `\`${name}\``).join(", ")}, even if it is in your tools: the adapter could not confirm it belongs to this backend. Wait for children to report back instead.`,
       );
     }
+  }
+  if (backend === "subagentura") {
+    lines.push(
+      pane
+        ? `Pane mode is available in ${multiplexer}. Start every child that edits files or runs commands in its own worktree (arena candidates, interrogate adversaries, swarm workers, a playbook unit owner), and any long child, with \`${SUBAGENTURA_PANE_TOOL}\`, not \`${tool}\`: pass \`task\`, the same \`model\` rule, \`cwd\` set to its worktree, and \`includeContext: false\`. Start read-only children (explorers, explainers, reviewers, judges) with \`${tool}\`. Read a pane child's result with \`${SUBAGENTURA_ARTIFACT_TOOL}\`; \`${SUBAGENTURA_PANE_STATUS_TOOL}\` shows whether its pane is alive. If a pane launch fails, start that child with \`${tool}\` and say so.`
+        : `Pane mode is not available in this session, so start every child with \`${tool}\` and do not call \`${SUBAGENTURA_PANE_TOOL}\`.`,
+      `When you start several children, give each \`completionPolicy: "group"\` and one shared \`completionGroupId\`, then end your turn: the finished group resumes you. Do not wait on a running child with \`${DELEGATION_BACKENDS.subagentura.companions[1]}\` or poll its status.`,
+    );
   }
   return lines.join(" ");
 }

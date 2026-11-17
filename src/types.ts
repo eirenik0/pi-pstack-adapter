@@ -92,6 +92,8 @@ export interface CapabilityStatus {
   readonly provider?: string;
   readonly backend?: DelegationProvider;
   readonly tools?: readonly string[];
+  /** The multiplexer pi-subagentura's pane mode runs children in, when the adapter offers it. */
+  readonly multiplexer?: string;
   readonly recommendation: string;
 }
 

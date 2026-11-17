@@ -453,8 +453,14 @@ A `subagent_isolated` tool counts only when it accepts `task`, `model`, `thinkin
 `async`. Its companions `get_subagent_status` and `get_subagent_result` count only when the same
 extension file registered them. pi-subagentura has no named agents, so its children read the
 agent prompt file the way T3 children do, and its tool cannot restrict a child's tools, so a
-read-only rule is stated in the brief. Under a model filter the adapter also checks
-`subagent_with_context` and `subagent_interactive` on their model and blocks `workflow`, whose
+read-only rule is stated in the brief. Pane mode adds `subagent_interactive`,
+`read_subagent_artifact`, and `get_interactive_subagent_status` only when the session runs in
+Herdr, tmux, Zellij, or Rex (`HERDR_ENV=1` first), the same extension file registered all three,
+and the launch tool accepts `task`, `model`, `thinkingLevel`, `cwd`, `includeContext`, and
+`completionPolicy`. The host mapping keeps read-only children in-process and puts only worktree
+or long-running children in panes, and falls back to `subagent_isolated` when a pane launch
+fails. Pane children are routed and gated like in-process ones. Under a model filter the adapter also checks
+`subagent_with_context` on its model and blocks `workflow`, whose
 script picks models it cannot see. No workflow has run end to end on pi-subagentura yet, so the
 tiers above rest on the pi-subagents and T3 runs.
 

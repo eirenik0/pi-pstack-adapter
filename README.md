@@ -114,7 +114,9 @@ the subagents:
 - **pi-subagentura.** If you already use `pi-subagentura`, workflows delegate through its
   `subagent_isolated` tool. It has no named agents, so a child reads the agent's prompt file, as
   under T3 Code. It cannot restrict a child's tools, so a read-only rule is stated in the brief.
-  To use it when `pi-subagents` is installed too, set `"delegation": "subagentura"`.
+  To use it when `pi-subagents` is installed too, set `"delegation": "subagentura"`. Inside Herdr,
+  tmux, Zellij, or Rex, a child that edits code in its own worktree, or runs long, can start in
+  its own pane through `subagent_interactive`, so you can watch it; other children run in-process.
 
 For multiple-choice questions, install `pi-ask-user`:
 

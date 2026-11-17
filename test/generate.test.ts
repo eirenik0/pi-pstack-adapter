@@ -831,7 +831,13 @@ test("the host mapping tells a pi-subagentura parent how to run agents, models, 
   assert.match(mapping, /`agents\/pistack-poteto-agent\.md` beside this file/);
   assert.match(mapping, /its level into `thinkingLevel`/);
   assert.match(mapping, /`completionPolicy: "group"`/);
-  assert.match(mapping, /Never use\s+`subagent_with_context`, `subagent_interactive`, or `workflow` for a pstack delegation/);
+  assert.match(mapping, /Never use\s+`subagent_with_context` or `workflow` for a pstack delegation/);
+  assert.match(mapping, /Pane mode\s+\(`subagent_interactive`\) starts the child as its own Pi process in a Herdr/);
+  assert.match(mapping, /Read-only\s+explorers, explainers, reviewers, and judges stay in-process/);
+  assert.match(mapping, /`includeContext: false`/);
+  assert.match(mapping, /Omit `mux`/);
+  assert.match(mapping, /Never type into a child's pane/);
+  assert.match(mapping, /If a pane launch\s+fails, start that child with `subagent_isolated` instead/);
   assert.match(mapping, /`git worktree add` first and pass its absolute path as `cwd`/);
   assert.match(mapping, /cannot restrict tools/);
 });

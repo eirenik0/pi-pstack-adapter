@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { registerAgents, RUNTIME_AGENT_REGISTER_EVENT, unregisteredAgentDiagnostics } from "../src/agents.ts";
 import { checkPrerequisites, detectCapabilities } from "../src/capabilities.ts";
+import { multiplexerOf } from "../src/delegation.ts";
 import { generate } from "../src/generate.ts";
 import { latestModeToggle, MODE_ENTRY_TYPE, modeInstruction } from "../src/mode.ts";
 import { mergeConfig } from "../src/config.ts";
@@ -99,6 +100,43 @@ test("pi-subagentura companions count only when the same extension registered th
   const forged = { name: "get_subagent_result", sourceInfo: { path: "/tmp/evil-extension.ts" } };
   const [delegation] = detectCapabilities([SUBAGENTURA, status, forged], "subagentura");
   assert.deepEqual(delegation?.tools, ["subagent_isolated", "get_subagent_status"]);
+});
+
+const PANE_TOOLS = [
+  {
+    name: "subagent_interactive",
+    parameters: { properties: { task: {}, model: {}, thinkingLevel: {}, cwd: {}, includeContext: {}, completionPolicy: {}, completionGroupId: {}, mux: {} } },
+    sourceInfo: SUBAGENTURA_SOURCE,
+  },
+  { name: "read_subagent_artifact", sourceInfo: SUBAGENTURA_SOURCE },
+  { name: "get_interactive_subagent_status", sourceInfo: SUBAGENTURA_SOURCE },
+];
+const IN_HERDR = { platform: "darwin", multiplexer: "herdr" } as const;
+
+// Intent: pane mode is offered only inside a multiplexer and only from the extension that owns subagent_isolated.
+test("pi-subagentura pane mode is offered inside a multiplexer when the same extension registered every pane tool", () => {
+  const [inHerdr] = detectCapabilities([SUBAGENTURA, ...PANE_TOOLS], "subagentura", IN_HERDR);
+  assert.deepEqual(inHerdr?.tools, ["subagent_isolated", "subagent_interactive", "read_subagent_artifact", "get_interactive_subagent_status"]);
+  assert.equal(inHerdr?.multiplexer, "herdr");
+
+  const [outside] = detectCapabilities([SUBAGENTURA, ...PANE_TOOLS], "subagentura", { platform: "darwin" });
+  assert.deepEqual(outside?.tools, ["subagent_isolated"]);
+  assert.equal(outside?.multiplexer, undefined);
+
+  const forged = PANE_TOOLS.map((tool, index) => (index === 1 ? { ...tool, sourceInfo: { path: "/tmp/evil-extension.ts" } } : tool));
+  assert.deepEqual(detectCapabilities([SUBAGENTURA, ...forged], "subagentura", IN_HERDR)[0]?.tools, ["subagent_isolated"]);
+
+  const weak = [{ ...PANE_TOOLS[0]!, parameters: { properties: { task: {} } } }, ...PANE_TOOLS.slice(1)];
+  assert.deepEqual(detectCapabilities([SUBAGENTURA, ...weak], "subagentura", IN_HERDR)[0]?.tools, ["subagent_isolated"]);
+});
+
+test("the multiplexer comes from the environment, Herdr first", () => {
+  assert.equal(multiplexerOf({ HERDR_ENV: "1", TMUX: "/tmp/tmux-1/default,1,0" } as NodeJS.ProcessEnv), "herdr");
+  assert.equal(multiplexerOf({ TMUX: "/tmp/tmux-1/default,1,0" } as NodeJS.ProcessEnv), "tmux");
+  assert.equal(multiplexerOf({ ZELLIJ: "0" } as NodeJS.ProcessEnv), "zellij");
+  assert.equal(multiplexerOf({ REX_SESSION: "s", REX_BLOCK: "b" } as NodeJS.ProcessEnv), undefined);
+  assert.equal(multiplexerOf({ REX_SESSION: "s", REX_BLOCK: "b", REX_SERVER: "x" } as NodeJS.ProcessEnv), "rex");
+  assert.equal(multiplexerOf({ HERDR_ENV: "0" } as NodeJS.ProcessEnv), undefined);
 });
 
 test("a subagent_isolated without model and thinking parameters does not satisfy delegation", () => {
@@ -337,6 +375,14 @@ test("a delegating workflow's check names the one delegation tool the adapter re
   const subagentura = renderCheck(skill, entry, { ok: true, lines: [] }, { delegation: detectCapabilities([SUBAGENTURA], "subagentura")[0] });
   assert.match(subagentura, /Delegate only with `subagent_isolated` \(subagentura\)/);
   assert.match(subagentura, /pass `model: "pstack:<role>"`, using `pstack:general` when no other role fits/);
+  assert.match(subagentura, /Pane mode is not available in this session, so start every child with `subagent_isolated`/);
+
+  const pane = renderCheck(skill, entry, { ok: true, lines: [] }, { delegation: detectCapabilities([SUBAGENTURA, ...PANE_TOOLS], "subagentura", IN_HERDR)[0] });
+  assert.match(pane, /Delegate only with `subagent_isolated`, or `subagent_interactive` in pane mode \(subagentura\)/);
+  assert.match(pane, /Pane mode is available in herdr\. Start every child that edits files or runs commands in its own worktree/);
+  assert.match(pane, /Start read-only children \(explorers, explainers, reviewers, judges\) with `subagent_isolated`/);
+  assert.match(pane, /then end your turn: the finished group resumes you\. Do not wait on a running child with `get_subagent_result`/);
+  assert.match(subagentura, /Delegate only with `subagent_isolated` \(subagentura\)/);
 
   const none = renderCheck(skill, entry, { ok: false, lines: ["x"] }, { delegation: detectCapabilities([spoofed], "t3", INSIDE_T3)[0] });
   assert.match(none, /No delegation tool is usable in this session, so do not delegate\./);

@@ -9,7 +9,7 @@ import {
   joinModelSpec,
   splitModelSpec,
 } from "./config.ts";
-import { SUBAGENTURA_TOOL, SUBAGENT_TOOL, T3_DELEGATE_TOOL } from "./delegation.ts";
+import { SUBAGENTURA_PANE_TOOL, SUBAGENTURA_TOOL, SUBAGENT_TOOL, T3_DELEGATE_TOOL } from "./delegation.ts";
 import { safeEcho } from "./echo.ts";
 import type { ModelFilter } from "./filter.ts";
 import { resolveRole } from "./pools.ts";
@@ -91,7 +91,7 @@ export async function routeDelegation(toolName: string, input: unknown, context:
   if (!isRecord(input)) return UNCHANGED;
   if (toolName === T3_DELEGATE_TOOL) return routeT3(input, context);
   if (toolName === SUBAGENT_TOOL) return routeSubagent(input, context);
-  if (toolName === SUBAGENTURA_TOOL) return routeSubagentura(input, context);
+  if (toolName === SUBAGENTURA_TOOL || toolName === SUBAGENTURA_PANE_TOOL) return routeSubagentura(toolName, input, context);
   return UNCHANGED;
 }
 
@@ -287,14 +287,15 @@ async function routeSubagent(args: Record<string, unknown>, context: RouteContex
 }
 
 /**
- * pi-subagentura takes the model as `provider/model` in `model` and the level in `thinkingLevel`.
+ * pi-subagentura's `subagent_isolated` and pane tool `subagent_interactive` take the model as
+ * `provider/model` in `model` and the level in `thinkingLevel`.
  * Without `model` it runs the parent's model, and without `thinkingLevel` its own default, which
  * is not the parent's level, so an inheriting role passes both explicitly.
  */
-async function routeSubagentura(args: Record<string, unknown>, context: RouteContext): Promise<RouteDecision> {
+async function routeSubagentura(toolName: string, args: Record<string, unknown>, context: RouteContext): Promise<RouteDecision> {
   const request = parseModelRequest(args.model);
   if (request.kind === "concrete") return UNCHANGED;
-  const where = `\`${SUBAGENTURA_TOOL}\` \`model\``;
+  const where = `\`${toolName}\` \`model\``;
   if (request.kind === "invalid") return { kind: "block", reason: blockReason(where, quoted(request), request.problem) };
   const given = args.thinkingLevel;
   if (given !== undefined && !(typeof given === "string" && isThinkingLevel(given))) {

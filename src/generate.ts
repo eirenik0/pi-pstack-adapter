@@ -4,6 +4,9 @@ import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   DEFAULT_DELEGATION,
+  SUBAGENTURA_ARTIFACT_TOOL,
+  SUBAGENTURA_PANE_STATUS_TOOL,
+  SUBAGENTURA_PANE_TOOL,
   SUBAGENTURA_RESULT_TOOL,
   SUBAGENTURA_STATUS_TOOL,
   SUBAGENTURA_TOOL,
@@ -565,7 +568,13 @@ function subagenturaSection(namespace: string): string {
 
 - A child sees only its \`task\` and \`persona\` text, never this conversation. Put the full
   brief, absolute paths, and any pstack skill the child must read into \`task\`. Never use
-  \`subagent_with_context\`, \`subagent_interactive\`, or \`workflow\` for a pstack delegation.
+  \`subagent_with_context\` or \`workflow\` for a pstack delegation.
+- Two modes. In-process (\`${SUBAGENTURA_TOOL}\`) is the default for every child. Pane mode
+  (\`${SUBAGENTURA_PANE_TOOL}\`) starts the child as its own Pi process in a Herdr, tmux, Zellij,
+  or Rex pane, where the user can watch it. Use pane mode only when the \`check\` report says it
+  is available, and only for a child that edits code in its own worktree (arena candidates,
+  interrogate adversaries, swarm workers, a playbook unit owner) or that runs long. Read-only
+  explorers, explainers, reviewers, and judges stay in-process.
 - There are no named agents. To run a pstack agent such as \`${namespace}-poteto-agent\`, begin
   \`task\` with "Read <path> and follow it as your system prompt.", where <path> is the absolute
   path of \`agents/${namespace}-poteto-agent.md\` beside this file. The \`agent prompts\` row of
@@ -587,8 +596,15 @@ function subagenturaSection(namespace: string): string {
 - Children that edit code in parallel, such as arena candidates, each need their own worktree:
   create it with \`git worktree add\` first and pass its absolute path as \`cwd\`. A worktree
   starts from the last commit, so uncommitted edits are not in it.
-- A further review round is a new \`${SUBAGENTURA_TOOL}\` call that carries the brief and the
-  prior findings.`;
+- Pane mode: pass \`task\`, \`model: "pstack:<role>"\`, \`cwd\` set to the child's worktree, and
+  \`includeContext: false\`. The adapter rewrites \`model\` and \`thinkingLevel\` as in-process.
+  Omit \`mux\` so pi-subagentura picks the pane it verifies this session owns; pass \`mux\` only
+  when the user names a multiplexer. For several pane children, give each \`completionPolicy:
+  "group"\` and one shared \`completionGroupId\`, then end the turn. Read each result with
+  \`${SUBAGENTURA_ARTIFACT_TOOL}\`; \`${SUBAGENTURA_PANE_STATUS_TOOL}\` shows whether a pane is still
+  alive. Never type into a child's pane, message it, or cancel it to finish sooner. If a pane launch
+  fails, start that child with \`${SUBAGENTURA_TOOL}\` instead and say so.
+- A further review round is a new call that carries the brief and the prior findings.`;
 }
 
 export function hostMappingDocument(namespace: string, delegation: DelegationProvider): string {

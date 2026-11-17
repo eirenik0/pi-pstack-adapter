@@ -95,6 +95,8 @@ test("pi-subagentura children are checked on their model, the parent's when omit
   assert.equal(gateDelegation("subagent_isolated", { task: "t" }, ctx).kind, "block");
   assert.equal(gateDelegation("subagent_with_context", { task: "t" }, ctx).kind, "block");
   assert.equal(gateDelegation("subagent_interactive", { task: "t", model: "cliproxyapi/kimi-k3" }, ctx).kind, "allow");
+  assert.equal(gateDelegation("subagent_interactive", { task: "t", model: "cliproxyapi/claude-opus-5-5" }, ctx).kind, "block");
+  assert.equal(gateDelegation("subagent_interactive", { task: "t" }, ctx).kind, "block");
   const workflow = gateDelegation("workflow", { script: "x" }, ctx);
   assert.equal(workflow.kind, "block");
   assert.match((workflow as { reason: string }).reason, /picks its children's models inside the script/);

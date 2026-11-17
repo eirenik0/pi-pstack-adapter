@@ -11,10 +11,22 @@ export const SUBAGENTURA_TOOL = "subagent_isolated";
 export const SUBAGENTURA_STATUS_TOOL = "get_subagent_status";
 export const SUBAGENTURA_RESULT_TOOL = "get_subagent_result";
 /**
+ * pi-subagentura's pane mode: a child as its own Pi process in a terminal multiplexer pane (Herdr,
+ * tmux, Zellij, or Rex), and the tools that read it. Offered only when the session runs in one.
+ */
+export const SUBAGENTURA_PANE_TOOL = "subagent_interactive";
+export const SUBAGENTURA_ARTIFACT_TOOL = "read_subagent_artifact";
+export const SUBAGENTURA_PANE_STATUS_TOOL = "get_interactive_subagent_status";
+export const SUBAGENTURA_PANE_TOOLS = [SUBAGENTURA_PANE_TOOL, SUBAGENTURA_ARTIFACT_TOOL, SUBAGENTURA_PANE_STATUS_TOOL] as const;
+/** Parameters the pane tool must accept for pane mode to be offered. */
+export const SUBAGENTURA_PANE_PARAMETERS = ["task", "model", "thinkingLevel", "cwd", "includeContext", "completionPolicy"] as const;
+/**
  * pi-subagentura's other tools that start a child. pstack never delegates through them, but under a
  * model filter the adapter still checks or blocks them, because each one picks a model.
  */
-export const SUBAGENTURA_OTHER_SPAWN_TOOLS = ["subagent_with_context", "subagent_interactive", "workflow"] as const;
+export const SUBAGENTURA_OTHER_SPAWN_TOOLS = ["subagent_with_context", "workflow"] as const;
+
+export type Multiplexer = "herdr" | "tmux" | "zellij" | "rex";
 
 /**
  * T3 Code's Pi bridge registers its MCP tools under this public prefix. It also registers a
@@ -82,10 +94,26 @@ export function callableTool<T extends ToolPresence>(tools: readonly T[], name: 
 export interface DelegationHost {
   readonly t3BridgePath?: string;
   readonly platform?: NodeJS.Platform;
+  /** The terminal multiplexer this session runs in, which pi-subagentura's pane mode needs. */
+  readonly multiplexer?: Multiplexer;
 }
 
 export function delegationHost(env: NodeJS.ProcessEnv = process.env): DelegationHost {
-  return { t3BridgePath: env[T3_BRIDGE_ENV] || undefined, platform: process.platform };
+  const multiplexer = multiplexerOf(env);
+  return { t3BridgePath: env[T3_BRIDGE_ENV] || undefined, platform: process.platform, ...(multiplexer ? { multiplexer } : {}) };
+}
+
+/**
+ * The multiplexer the environment names, Herdr first because it can run inside tmux. This is a hint
+ * for offering pane mode, not proof of ownership: pi-subagentura verifies the pane itself and fails
+ * closed, and the host mapping then falls back to \`subagent_isolated\`.
+ */
+export function multiplexerOf(env: NodeJS.ProcessEnv): Multiplexer | undefined {
+  if (env.HERDR_ENV === "1") return "herdr";
+  if (env.REX_SESSION && env.REX_BLOCK && env.REX_SERVER) return "rex";
+  if (env.TMUX) return "tmux";
+  if (env.ZELLIJ || env.ZELLIJ_SESSION_NAME) return "zellij";
+  return undefined;
 }
 
 export type DelegationResolution =
@@ -125,9 +153,23 @@ export function resolveDelegation(
       if (backend.id === "subagentura") return sameOwner(companion, tool, host);
       return true;
     });
+    if (backend.id === "subagentura") companions.push(...paneTools(tools, tool, host));
     return { kind: "resolved", backend, tool, companions };
   }
   return { kind: "unavailable", problems };
+}
+
+/**
+ * Pane mode is offered only inside a multiplexer, and only when the same extension registered every
+ * pane tool and the launch tool accepts the parameters the host mapping tells the parent to pass.
+ */
+function paneTools(tools: readonly ToolPresence[], owner: ToolPresence, host: DelegationHost): string[] {
+  if (!host.multiplexer) return [];
+  const found = SUBAGENTURA_PANE_TOOLS.map((name) => callableTool(tools, name));
+  if (found.some((tool) => tool === undefined || !sameOwner(tool, owner, host))) return [];
+  const launch = parameterNames(found[0]?.parameters);
+  if (SUBAGENTURA_PANE_PARAMETERS.some((name) => !launch.has(name))) return [];
+  return [...SUBAGENTURA_PANE_TOOLS];
 }
 
 /** A companion counts only when the extension that registered the delegation tool registered it too. */

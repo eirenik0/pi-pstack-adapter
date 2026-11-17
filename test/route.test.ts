@@ -245,3 +245,11 @@ test("a subagent_isolated reference with an invalid thinkingLevel, or a panel ro
   assert.match(await blocked(routeDelegation(ISOLATED, { task: "t", model: "pstack:feature", thinkingLevel: "huge" }, context())), /`thinkingLevel` is not one of/);
   assert.match(await blocked(routeDelegation(ISOLATED, { task: "t", model: "pstack:arena-runners" }, context())), /is a panel role/);
 });
+
+// Intent: a pane child gets the same role routing as an in-process one.
+test("a subagent_interactive role reference is rewritten like subagent_isolated, keeping its pane arguments", async () => {
+  const input = { task: "do it", model: "pstack:feature", cwd: "/tmp/wt", includeContext: false, completionPolicy: "group", completionGroupId: "g" };
+  const picked = await rewritten(routeDelegation("subagent_interactive", input, context()));
+  assert.deepEqual(picked, { ...input, model: "cliproxyapi/claude-opus-5-5", thinkingLevel: "high" });
+  assert.match(await blocked(routeDelegation("subagent_interactive", { task: "t", model: "pstack:nope" }, context())), /`subagent_interactive` `model`/);
+});

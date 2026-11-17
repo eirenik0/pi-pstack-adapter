@@ -1,5 +1,6 @@
 import {
   DEFAULT_DELEGATION,
+  SUBAGENTURA_PANE_TOOL,
   type DelegationHost,
   callableTool,
   delegationHost,
@@ -57,6 +58,7 @@ function detectDelegation(
     provider: resolution.backend.id === "t3" ? resolution.backend.label : resolution.tool.sourceInfo?.source ?? resolution.backend.label,
     backend: resolution.backend.id,
     tools: [resolution.backend.tool, ...resolution.companions],
+    ...(resolution.companions.includes(SUBAGENTURA_PANE_TOOL) && host.multiplexer ? { multiplexer: host.multiplexer } : {}),
     recommendation: DELEGATION_RECOMMENDATION,
   };
 }
