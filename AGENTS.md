@@ -28,7 +28,7 @@ Read the files for the branch you are changing:
 - Cursor terms the host mapping must cover, scanned by the certification probe: `src/vocabulary.ts`
 - Skill tiers and requirements: `src/registry.ts`
 - Capability probes: `src/capabilities.ts`
-- Delegation backends (T3 Code `delegate_task`, pi-subagents `subagent`) and their order: `src/delegation.ts`
+- Delegation backends (T3 Code `delegate_task`, pi-subagents `subagent`, pi-subagentura `subagent_isolated`) and their order: `src/delegation.ts`
 - Status and prerequisite reports: `src/status.ts`
 - Adapter-owned skill bodies: `adapter-skills/`
 

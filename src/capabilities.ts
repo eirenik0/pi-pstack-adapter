@@ -23,7 +23,7 @@ interface CapabilityProbe {
 }
 
 const DELEGATION_RECOMMENDATION =
-  "Run Pi inside T3 Code, whose `delegate_task` tool starts child agents, or install a delegation provider with named background agents and model selection, for example `pi install npm:pi-subagents`.";
+  "Run Pi inside T3 Code, whose `delegate_task` tool starts child agents, or install a delegation provider with background children and model selection, for example `pi install npm:pi-subagents` or `pi install npm:pi-subagentura`.";
 
 const PROBES: readonly CapabilityProbe[] = [
   {

@@ -369,15 +369,15 @@ test("every upstream role line maps to an adapter role, so no delegate falls bac
   assert.match(rowFor("| `claude-opus-5-5-xhigh-fast`"), /Pass the role as the model, `pstack:<role>`.*An unconfigured role uses the `general` role\. When `general` is unconfigured too, the adapter lets the child inherit/);
 });
 
-test("both delegation backends pass the nested delegation rule down to every child", () => {
+test("every delegation backend passes the nested delegation rule down to every child", () => {
   const root = makeTempDir("host-mapping-nested");
   const pluginDir = writePluginFixture(root, { skills: [{ name: "unslop", body: "b\n" }] });
-  for (const delegation of ["t3", "pi-subagents"] as const) {
+  for (const delegation of ["t3", "pi-subagents", "subagentura"] as const) {
     const result = run({ pluginDir, cacheRoot: join(root, `cache-${delegation}`), delegation });
     const mapping = readFileSync(join(result.outDir, "adapter", "host-mapping.md"), "utf8");
     const sections = mapping.split(/^### /m).slice(1);
 
-    assert.equal(sections.length, 2, delegation);
+    assert.equal(sections.length, 3, delegation);
     for (const section of sections) {
       const heading = section.split("\n")[0] ?? "";
       assert.match(section, /every agent that delegates, a child included, gives each new child an\s+explicit role/, heading);
@@ -602,7 +602,7 @@ test("a pi-subagents preference reverses the order in wrappers and the host mapp
   const wrapper = readFileSync(join(subagents.skillsDir, "pistack-arena", "SKILL.md"), "utf8");
   assert.ok(wrapper.indexOf("1. pi-subagents' `subagent`") < wrapper.indexOf("2. T3 Code's"));
   const mapping = readFileSync(join(subagents.outDir, "adapter", "host-mapping.md"), "utf8");
-  assert.match(mapping, /first usable tool in the configured order, `subagent`, then `mcp__t3-code__delegate_task`\./);
+  assert.match(mapping, /first usable tool in the configured order, `subagent`, then `mcp__t3-code__delegate_task`, then `subagent_isolated`\./);
   assert.match(mapping, /Use only the backend the adapter resolved/);
   assert.ok(mapping.indexOf("### pi-subagents") < mapping.indexOf("### T3 Code"));
 });
@@ -816,4 +816,22 @@ test("upstream text that imitates the body markers is reported and still sits un
   }
   const warned = result.diagnostics.filter((d) => d.level === "warning" && /body marker text/.test(d.message)).map((d) => d.resource);
   assert.deepEqual(warned.sort(), ["agent:poteto-agent", "skill:arena"]);
+});
+
+// Intent: pi-subagentura is a third backend, so the mapping must teach its own argument shape.
+test("the host mapping tells a pi-subagentura parent how to run agents, models, background work, and isolation", () => {
+  const root = makeTempDir("subagentura-mapping");
+  const pluginDir = writePluginFixture(root, { skills: [{ name: "arena", body: "\nSpawn candidates.\n" }] });
+  const result = run({ pluginDir, cacheRoot: join(root, "cache"), delegation: "subagentura" });
+  const wrapper = readFileSync(join(result.skillsDir, "pistack-arena", "SKILL.md"), "utf8");
+  assert.ok(wrapper.indexOf("1. pi-subagentura's `subagent_isolated`") < wrapper.indexOf("2. T3 Code's"));
+  const mapping = readFileSync(join(result.outDir, "adapter", "host-mapping.md"), "utf8");
+  assert.ok(mapping.indexOf("### pi-subagentura") < mapping.indexOf("### T3 Code"));
+  assert.match(mapping, /first usable tool in the configured order, `subagent_isolated`, then `mcp__t3-code__delegate_task`, then `subagent`\./);
+  assert.match(mapping, /`agents\/pistack-poteto-agent\.md` beside this file/);
+  assert.match(mapping, /its level into `thinkingLevel`/);
+  assert.match(mapping, /`completionPolicy: "group"`/);
+  assert.match(mapping, /Never use\s+`subagent_with_context`, `subagent_interactive`, or `workflow` for a pstack delegation/);
+  assert.match(mapping, /`git worktree add` first and pass its absolute path as `cwd`/);
+  assert.match(mapping, /cannot restrict tools/);
 });

@@ -70,11 +70,12 @@ export function unregisteredAgentDiagnostics(
 ): Diagnostic[] {
   return unregistered.map((agent) => {
     const promptPath = join(promptsDir, `${agent.generatedName}.md`);
-    if (backend === "t3") {
+    if (backend === "t3" || backend === "subagentura") {
+      const host = backend === "t3" ? "T3 Code" : "pi-subagentura";
       return {
         level: "info",
         resource: `agent:${agent.upstreamName}`,
-        message: `\`${agent.generatedName}\` is not a named agent here. T3 Code children run it by reading ${promptPath} as their system prompt.`,
+        message: `\`${agent.generatedName}\` is not a named agent here. ${host} children run it by reading ${promptPath} as their system prompt.`,
       };
     }
     return {

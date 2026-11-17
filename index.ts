@@ -8,6 +8,7 @@ import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-a
 import { registerDelegationActivation } from "./src/activation.ts";
 import { registerAgents, unregisteredAgentDiagnostics, type RuntimeRegistration } from "./src/agents.ts";
 import { DEFAULT_DELEGATION, SUBAGENT_TOOL, T3_DELEGATE_TOOL } from "./src/delegation.ts";
+import { SUBAGENTURA_GATED_TOOLS } from "./src/gate.ts";
 import {
   FILTER_ENTRY_TYPE,
   type ModelFilter,
@@ -148,7 +149,7 @@ export default function (pi: ExtensionAPI) {
   });
 
   pi.on("tool_call", async (event, ctx) => {
-    if (event.toolName !== T3_DELEGATE_TOOL && event.toolName !== SUBAGENT_TOOL) return;
+    if (event.toolName !== T3_DELEGATE_TOOL && event.toolName !== SUBAGENT_TOOL && !SUBAGENTURA_GATED_TOOLS.includes(event.toolName)) return;
     const unreadable = configBlock();
     if (unreadable) return unreadable;
     const currentGateContext = () => ({

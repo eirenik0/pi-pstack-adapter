@@ -76,11 +76,44 @@ test("a T3-named tool from another extension, or outside T3 Code, does not satis
   assert.equal(detectCapabilities([spoofed, SUBAGENT_TOOL], "t3", INSIDE_T3)[0]?.backend, "pi-subagents");
 });
 
+const SUBAGENTURA_SOURCE = { source: "npm:pi-subagentura", path: "/pkg/pi-subagentura/src/subagent.ts" };
+const SUBAGENTURA = {
+  name: "subagent_isolated",
+  parameters: { properties: { task: {}, persona: {}, model: {}, thinkingLevel: {}, cwd: {}, async: {}, completionPolicy: {}, completionGroupId: {} } },
+  sourceInfo: SUBAGENTURA_SOURCE,
+};
+
+// Intent: a session with only pi-subagentura can run pstack's delegating workflows.
+test("pi-subagentura's subagent_isolated satisfies delegation when it is the only backend, or when preferred", () => {
+  const [alone] = detectCapabilities([SUBAGENTURA]);
+  assert.equal(alone?.available, true);
+  assert.equal(alone?.backend, "subagentura");
+  assert.equal(alone?.provider, "npm:pi-subagentura");
+  assert.equal(detectCapabilities([SUBAGENT_TOOL, SUBAGENTURA], "subagentura")[0]?.backend, "subagentura");
+  assert.equal(detectCapabilities([SUBAGENT_TOOL, SUBAGENTURA], "t3")[0]?.backend, "pi-subagents");
+});
+
+// Intent: the result tools are trusted only from the extension that starts the children.
+test("pi-subagentura companions count only when the same extension registered them", () => {
+  const status = { name: "get_subagent_status", sourceInfo: SUBAGENTURA_SOURCE };
+  const forged = { name: "get_subagent_result", sourceInfo: { path: "/tmp/evil-extension.ts" } };
+  const [delegation] = detectCapabilities([SUBAGENTURA, status, forged], "subagentura");
+  assert.deepEqual(delegation?.tools, ["subagent_isolated", "get_subagent_status"]);
+});
+
+test("a subagent_isolated without model and thinking parameters does not satisfy delegation", () => {
+  const weak = { ...SUBAGENTURA, parameters: { properties: { task: {}, async: {} } } };
+  const [status] = detectCapabilities([weak], "subagentura");
+  assert.equal(status?.available, false);
+  assert.match(status?.recommendation ?? "", /does not accept model, thinkingLevel/);
+});
+
 test("a missing provider recommends a concrete install command", () => {
   const statuses = detectCapabilities([{ name: "read" }]);
   assert.equal(statuses.every((status) => !status.available), true);
   assert.match(statuses[0]?.recommendation ?? "", /T3 Code/);
   assert.match(statuses[0]?.recommendation ?? "", /pi install npm:pi-subagents/);
+  assert.match(statuses[0]?.recommendation ?? "", /pi install npm:pi-subagentura/);
   assert.match(statuses[1]?.recommendation ?? "", /pi install npm:pi-ask-user/);
 });
 
@@ -299,6 +332,11 @@ test("a delegating workflow's check names the one delegation tool the adapter re
   const output = renderCheck(skill, entry, { ok: true, lines: [] }, { delegation: statuses[0] });
   assert.match(output, /Delegate only with `subagent` \(pi-subagents\)\. The adapter resolved this backend for the session, so do not use any other delegation tool\./);
   assert.doesNotMatch(output, /You may also call/);
+  assert.match(output, /Give every child a role, never your own model: pass `model: "pstack:<role>"` for each child/);
+
+  const subagentura = renderCheck(skill, entry, { ok: true, lines: [] }, { delegation: detectCapabilities([SUBAGENTURA], "subagentura")[0] });
+  assert.match(subagentura, /Delegate only with `subagent_isolated` \(subagentura\)/);
+  assert.match(subagentura, /pass `model: "pstack:<role>"`, using `pstack:general` when no other role fits/);
 
   const none = renderCheck(skill, entry, { ok: false, lines: ["x"] }, { delegation: detectCapabilities([spoofed], "t3", INSIDE_T3)[0] });
   assert.match(none, /No delegation tool is usable in this session, so do not delegate\./);
@@ -439,7 +477,7 @@ test("the status report names both versions, the resolved commit, the tiers, and
   assert.equal(existsSync(join(row("generated skills") ?? "", "pistack-how", "SKILL.md")), true);
   assert.match(report, /outside the tested trust boundary/);
   assert.match(report, /\| delegation \| missing \|/);
-  assert.match(report, /\| delegation order \| t3, then pi-subagents \|/);
+  assert.match(report, /\| delegation order \| t3, then pi-subagents, then subagentura \|/);
   assert.match(report, /\| delegation \| none available \|/);
   assert.equal(row("agent prompts"), generation.agentPromptsDir);
   assert.match(report, /\| structured-question \| available \|/);

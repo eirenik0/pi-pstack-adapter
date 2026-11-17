@@ -85,3 +85,18 @@ test("the gate echoes agent-supplied text short and escaped", () => {
     assert.ok(reason !== "" && !reason.includes("IGNORE THE FILTER") && reason.length < 600, reason.slice(0, 200));
   }
 });
+
+// Intent: under a model filter no pi-subagentura spawn tool may start a child on an unchecked model.
+test("pi-subagentura children are checked on their model, the parent's when omitted, and workflows are blocked", () => {
+  const filter = { exclude: ["claude-*"] };
+  const ctx = { filter, parentModel: "cliproxyapi/claude-opus-5-5", resolveModel: (model: string) => (model.includes("/") ? model : undefined) };
+  assert.equal(gateDelegation("subagent_isolated", { task: "t", model: "cliproxyapi/kimi-k3" }, ctx).kind, "allow");
+  assert.equal(gateDelegation("subagent_isolated", { task: "t", model: "cliproxyapi/claude-opus-5-5" }, ctx).kind, "block");
+  assert.equal(gateDelegation("subagent_isolated", { task: "t" }, ctx).kind, "block");
+  assert.equal(gateDelegation("subagent_with_context", { task: "t" }, ctx).kind, "block");
+  assert.equal(gateDelegation("subagent_interactive", { task: "t", model: "cliproxyapi/kimi-k3" }, ctx).kind, "allow");
+  const workflow = gateDelegation("workflow", { script: "x" }, ctx);
+  assert.equal(workflow.kind, "block");
+  assert.match((workflow as { reason: string }).reason, /picks its children's models inside the script/);
+  assert.equal(gateDelegation("workflow", { script: "x" }, { ...ctx, filter: undefined }).kind, "allow");
+});

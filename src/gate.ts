@@ -1,5 +1,5 @@
 import { splitModelSpec } from "./config.ts";
-import { SUBAGENT_TOOL, T3_DELEGATE_TOOL } from "./delegation.ts";
+import { SUBAGENTURA_OTHER_SPAWN_TOOLS, SUBAGENTURA_TOOL, SUBAGENT_TOOL, T3_DELEGATE_TOOL } from "./delegation.ts";
 import { safeEcho } from "./echo.ts";
 import { type ModelFilter, describeFilter, isRestricting, modelAllowed } from "./filter.ts";
 
@@ -23,6 +23,9 @@ export function gateDelegation(toolName: string, input: unknown, context: GateCo
   const args = typeof input === "object" && input !== null ? (input as Record<string, unknown>) : {};
   if (toolName === T3_DELEGATE_TOOL) return gateT3(args, context);
   if (toolName === SUBAGENT_TOOL) return gateSubagent(args, context);
+  if (toolName === SUBAGENTURA_TOOL || (SUBAGENTURA_OTHER_SPAWN_TOOLS as readonly string[]).includes(toolName)) {
+    return gateSubagentura(toolName, args, context);
+  }
   return ALLOW;
 }
 
@@ -115,4 +118,18 @@ function gateSubagent(args: Record<string, unknown>, context: GateContext): Gate
     if (decision.kind === "block") return decision;
   }
   return ALLOW;
+}
+
+/** Every pi-subagentura tool that starts a child, which the gate checks under a model filter. */
+export const SUBAGENTURA_GATED_TOOLS: readonly string[] = [SUBAGENTURA_TOOL, ...SUBAGENTURA_OTHER_SPAWN_TOOLS];
+
+function gateSubagentura(toolName: string, args: Record<string, unknown>, context: GateContext): GateDecision {
+  const filter = context.filter as ModelFilter;
+  const scoped = { ...context, filter };
+  const where = `\`${toolName}\``;
+  if (toolName === "workflow") {
+    return block("A pi-subagentura `workflow` picks its children's models inside the script, where the adapter cannot check them. Start each child with `subagent_isolated` and an allowed `model` instead.", filter);
+  }
+  if (args.model === undefined) return checkParent(where, scoped);
+  return checkModel(args.model, where, scoped);
 }

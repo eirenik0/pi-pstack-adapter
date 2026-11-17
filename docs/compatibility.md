@@ -437,8 +437,9 @@ extension handles that event, the status report says the agents did not register
 
 ## Delegation providers
 
-The `delegation` capability is satisfied by T3 Code's `mcp__t3-code__delegate_task` or by
-`pi-subagents`' `subagent`, in the order the `delegation` setting gives, T3 first by default.
+The `delegation` capability is satisfied by T3 Code's `mcp__t3-code__delegate_task`, by
+`pi-subagents`' `subagent`, or by `pi-subagentura`'s `subagent_isolated`, in the order the
+`delegation` setting gives, T3 first by default, then pi-subagents, then pi-subagentura.
 A hidden registration does not count. A T3 tool counts only when the extension at
 `T3_PI_MCP_EXTENSION_PATH`, the bridge T3 Code launches, registered it, and only when it accepts
 `task`, `target`, and `mode`. Status and activation share that resolution, so the report always
@@ -447,6 +448,15 @@ activates `task_status` and `orchestrator_capabilities` when the bridge register
 A delegating wrapper tells the model to read the tool from `/pistack-check` and to use no other,
 so a rejected tool that is still in the session is not used. The check also names the companion
 tools the model may call, and forbids any companion it could not trace to T3 Code.
+
+A `subagent_isolated` tool counts only when it accepts `task`, `model`, `thinkingLevel`, and
+`async`. Its companions `get_subagent_status` and `get_subagent_result` count only when the same
+extension file registered them. pi-subagentura has no named agents, so its children read the
+agent prompt file the way T3 children do, and its tool cannot restrict a child's tools, so a
+read-only rule is stated in the brief. Under a model filter the adapter also checks
+`subagent_with_context` and `subagent_interactive` on their model and blocks `workflow`, whose
+script picks models it cannot see. No workflow has run end to end on pi-subagentura yet, so the
+tiers above rest on the pi-subagents and T3 runs.
 
 An agent prompt file wraps the upstream body in the same markers as a skill wrapper, with host
 precedence before and after it. The closing note says that everything after the opening notes is

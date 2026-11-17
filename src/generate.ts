@@ -4,6 +4,9 @@ import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   DEFAULT_DELEGATION,
+  SUBAGENTURA_RESULT_TOOL,
+  SUBAGENTURA_STATUS_TOOL,
+  SUBAGENTURA_TOOL,
   SUBAGENT_LOADER,
   SUBAGENT_TOOL,
   T3_CAPABILITIES_TOOL,
@@ -402,6 +405,9 @@ export function delegationNote(preferred: DelegationProvider, generatedName: str
     if (backend.id === "t3") {
       return `${index + 1}. T3 Code's \`${T3_DELEGATE_TOOL}\`. It has no named agents, so follow the T3 rules in the host mapping's Delegation section.`;
     }
+    if (backend.id === "subagentura") {
+      return `${index + 1}. pi-subagentura's \`${SUBAGENTURA_TOOL}\`. It has no named agents, so follow the pi-subagentura rules in the host mapping's Delegation section.`;
+    }
     return `${index + 1}. pi-subagents' \`${SUBAGENT_TOOL}\`. If it is missing and \`${SUBAGENT_LOADER}\` is present, call \`${SUBAGENT_LOADER}({})\` first, then call \`${SUBAGENT_TOOL}({ action: "list" })\` to see the available agents.`;
   });
   return [
@@ -464,15 +470,17 @@ const MODEL_POLICY_SECTION = `Model roles, pools, and the model filter work the 
   allowed model unless you override the ranking as for a pool. A configured seat names its model
   and thinking, and the adapter does not rewrite a concrete model, so pass both yourself: on T3,
   \`target: { providerInstanceId: "pi", model: "<provider/model>", options: { thinking: "<level>" } }\`;
-  on pi-subagents, \`model: "<provider/model>:<level>"\`. For a seat at "backend default", pass
-  \`options: {}\` on T3, which clears the inherited thinking, or no suffix on pi-subagents. An
-  \`inherit\` seat omits \`target\` on T3 and passes your own model on pi-subagents.
+  on pi-subagents, \`model: "<provider/model>:<level>"\`; on pi-subagentura,
+  \`model: "<provider/model>", thinkingLevel: "<level>"\`. For a seat at "backend default", pass
+  \`options: {}\` on T3, which clears the inherited thinking, no suffix on pi-subagents, or no
+  \`thinkingLevel\` on pi-subagentura. An \`inherit\` seat omits \`target\` on T3 and passes your
+  own model on pi-subagents, and your own model and thinking level on pi-subagentura.
 - When the \`model filter\` row of the status report names a filter, the adapter blocks any
-  \`delegate_task\` or \`subagent\` call in this session whose model the filter excludes, or whose
+  \`delegate_task\`, \`subagent\`, or pi-subagentura call that starts a child in this session whose model the filter excludes, or whose
   model it cannot tell. That covers a call with no model while your own model is excluded, a model
   Pi does not know, a T3 provider other than \`pi\`, a \`subagent\` child without \`model\`, a
-  \`subagent\` workflow script, and a \`subagent\` action that starts, restarts, steers, or schedules
-  a child or configures a watchdog. A T3 target with a named environment is blocked too. The
+  \`subagent\` workflow script, a \`subagent\` action that starts, restarts, steers, or schedules
+  a child or configures a watchdog, and every pi-subagentura \`workflow\` script. A T3 target with a named environment is blocked too. The
   adapter replaces a \`pstack:<role>\` reference first, and checks the model it picked.
   Report a blocked call instead of retrying it. Keep the active filter unchanged unless the user
   requests a change. Wait for \`set_filter\` to finish before issuing delegation calls.
@@ -481,7 +489,9 @@ const MODEL_POLICY_SECTION = `Model roles, pools, and the model filter work the 
   A saved filter applies in a child where the adapter loads the same config files.`;
 
 function delegationSection(namespace: string, preferred: DelegationProvider): string {
-  const sections = delegationOrder(preferred).map((backend) => (backend.id === "t3" ? t3Section(namespace) : subagentSection(namespace)));
+  const sections = delegationOrder(preferred).map((backend) =>
+    backend.id === "t3" ? t3Section(namespace) : backend.id === "subagentura" ? subagenturaSection(namespace) : subagentSection(namespace),
+  );
   const order = delegationOrder(preferred).map((backend) => `\`${backend.tool}\``).join(", then ");
   return `## Delegation
 
@@ -548,6 +558,37 @@ function subagentSection(namespace: string): string {
   passes your own model and thinking, or omits \`model\` when Pi does not report the model.
 - ${NESTED_DELEGATION_RULE}
 - Background: \`async: true\`.`;
+}
+
+function subagenturaSection(namespace: string): string {
+  return `### pi-subagentura: \`${SUBAGENTURA_TOOL}\`
+
+- A child sees only its \`task\` and \`persona\` text, never this conversation. Put the full
+  brief, absolute paths, and any pstack skill the child must read into \`task\`. Never use
+  \`subagent_with_context\`, \`subagent_interactive\`, or \`workflow\` for a pstack delegation.
+- There are no named agents. To run a pstack agent such as \`${namespace}-poteto-agent\`, begin
+  \`task\` with "Read <path> and follow it as your system prompt.", where <path> is the absolute
+  path of \`agents/${namespace}-poteto-agent.md\` beside this file. The \`agent prompts\` row of
+  the status report gives that directory.
+- Model: pass \`model: "pstack:<role>"\`. The adapter writes the picked \`provider/model\` into
+  \`model\` and its level into \`thinkingLevel\`, and removes \`thinkingLevel\` when the role's
+  thinking reads "backend default". An unconfigured role uses the \`general\` role. When
+  \`general\` is unconfigured too, the adapter passes your own model and thinking level, or
+  omits them when Pi does not report them.
+- ${NESTED_DELEGATION_RULE}
+- Background: \`async: true\`, the default. For a fan-out whose results you combine, give every
+  child \`completionPolicy: "group"\` and one shared \`completionGroupId\`, then end the turn: the
+  finished group resumes this thread. Do not poll. Call \`${SUBAGENTURA_STATUS_TOOL}\` or
+  \`${SUBAGENTURA_RESULT_TOOL}\` only when the \`check\` report allows it and you need a result
+  mid-turn. Do not cancel a running child to finish sooner.
+- Tool restrictions: \`${SUBAGENTURA_TOOL}\` cannot restrict tools. State a read-only or
+  no-commit rule in \`task\`, after the line that names the agent prompt file, so it is the last
+  instruction the child reads.
+- Children that edit code in parallel, such as arena candidates, each need their own worktree:
+  create it with \`git worktree add\` first and pass its absolute path as \`cwd\`. A worktree
+  starts from the last commit, so uncommitted edits are not in it.
+- A further review round is a new \`${SUBAGENTURA_TOOL}\` call that carries the brief and the
+  prior findings.`;
 }
 
 export function hostMappingDocument(namespace: string, delegation: DelegationProvider): string {

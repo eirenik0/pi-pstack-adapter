@@ -21,7 +21,7 @@ export type SupportTier =
 
 export type CapabilityId = "delegation" | "structured-question";
 
-export type DelegationProvider = "t3" | "pi-subagents";
+export type DelegationProvider = "t3" | "pi-subagents" | "subagentura";
 
 export interface RegistryEntry {
   readonly tier: SupportTier;

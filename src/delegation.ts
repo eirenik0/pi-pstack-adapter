@@ -6,6 +6,16 @@ export const T3_BRIDGE_ENV = "T3_PI_MCP_EXTENSION_PATH";
 export const SUBAGENT_TOOL = "subagent";
 export const SUBAGENT_LOADER = "subagents_enable";
 
+/** pi-subagentura's fresh-context child tool, and the tools it reads a background child with. */
+export const SUBAGENTURA_TOOL = "subagent_isolated";
+export const SUBAGENTURA_STATUS_TOOL = "get_subagent_status";
+export const SUBAGENTURA_RESULT_TOOL = "get_subagent_result";
+/**
+ * pi-subagentura's other tools that start a child. pstack never delegates through them, but under a
+ * model filter the adapter still checks or blocks them, because each one picks a model.
+ */
+export const SUBAGENTURA_OTHER_SPAWN_TOOLS = ["subagent_with_context", "subagent_interactive", "workflow"] as const;
+
 /**
  * T3 Code's Pi bridge registers its MCP tools under this public prefix. It also registers a
  * `mcp__t3_code__` copy with hidden exposure to reserve the name, which the model cannot call.
@@ -38,9 +48,16 @@ export const DELEGATION_BACKENDS: Readonly<Record<DelegationProvider, Delegation
     companions: [],
     requiredParameters: ["agent", "task", "async", "model"],
   },
+  "subagentura": {
+    id: "subagentura",
+    label: "pi-subagentura",
+    tool: SUBAGENTURA_TOOL,
+    companions: [SUBAGENTURA_STATUS_TOOL, SUBAGENTURA_RESULT_TOOL],
+    requiredParameters: ["task", "model", "thinkingLevel", "async"],
+  },
 };
 
-export const DELEGATION_PROVIDERS: readonly DelegationProvider[] = ["t3", "pi-subagents"];
+export const DELEGATION_PROVIDERS: readonly DelegationProvider[] = ["t3", "pi-subagents", "subagentura"];
 export const DEFAULT_DELEGATION: DelegationProvider = "t3";
 
 export function isDelegationProvider(value: unknown): value is DelegationProvider {
@@ -103,11 +120,22 @@ export function resolveDelegation(
     }
     const companions = backend.companions.filter((name) => {
       const companion = callableTool(tools, name);
-      return companion !== undefined && (backend.id !== "t3" || fromT3Bridge(companion, host));
+      if (companion === undefined) return false;
+      if (backend.id === "t3") return fromT3Bridge(companion, host);
+      if (backend.id === "subagentura") return sameOwner(companion, tool, host);
+      return true;
     });
     return { kind: "resolved", backend, tool, companions };
   }
   return { kind: "unavailable", problems };
+}
+
+/** A companion counts only when the extension that registered the delegation tool registered it too. */
+function sameOwner(companion: ToolPresence, tool: ToolPresence, host: DelegationHost): boolean {
+  const a = companion.sourceInfo?.path;
+  const b = tool.sourceInfo?.path;
+  if (!a || !b) return false;
+  return samePath(a, b, host.platform ?? process.platform);
 }
 
 function fromT3Bridge(tool: ToolPresence, host: DelegationHost): boolean {

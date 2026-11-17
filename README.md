@@ -103,7 +103,7 @@ skill.
 
 ## Set up workflows that delegate or ask questions
 
-Some workflows hand work to subagents or ask you multiple-choice questions. Two providers can run
+Some workflows hand work to subagents or ask you multiple-choice questions. Three providers can run
 the subagents:
 
 - **T3 Code.** When Pi runs inside [T3 Code](https://github.com/pingdotgg/t3code), workflows
@@ -111,6 +111,10 @@ the subagents:
   and model T3 offers, and can work in its own worktree. You install nothing extra.
 - **pi-subagents.** Outside T3 Code, install `pi-subagents`. The pstack agents appear as
   `pistack-comment-sicko` and `pistack-poteto-agent`.
+- **pi-subagentura.** If you already use `pi-subagentura`, workflows delegate through its
+  `subagent_isolated` tool. It has no named agents, so a child reads the agent's prompt file, as
+  under T3 Code. It cannot restrict a child's tools, so a read-only rule is stated in the brief.
+  To use it when `pi-subagents` is installed too, set `"delegation": "subagentura"`.
 
 For multiple-choice questions, install `pi-ask-user`:
 
@@ -322,7 +326,7 @@ the source through it.
 | `PISTACK_ALLOW_BOOTSTRAP` | Allows a noninteractive first download. |
 | `PISTACK_CACHE_DIR` | Changes the cache directory. |
 | `PISTACK_MODELS` | Assigns models as comma-separated `role=provider/model[:thinking]` pairs. A pool separates its entries with `\|`. A panel role takes its entries separated by spaces. |
-| `PISTACK_DELEGATION` | Sets the delegation provider to try first: `t3` (default) or `pi-subagents`. The config file key is `delegation`. |
+| `PISTACK_DELEGATION` | Sets the delegation provider to try first: `t3` (default), `pi-subagents`, or `subagentura`. The config file key is `delegation`. |
 
 ## Security and trust
 

@@ -375,11 +375,18 @@ export function renderCheck(
   return parts.join("\n\n");
 }
 
+const ROLE_ARGUMENT: Readonly<Record<DelegationProvider, string>> = {
+  "t3": "pass `target: { providerInstanceId: \"pi\", model: \"pstack:<role>\" }`",
+  "pi-subagents": "pass `model: \"pstack:<role>\"` for each child",
+  "subagentura": "pass `model: \"pstack:<role>\"`",
+};
+
 function delegationInstruction(backend: DelegationProvider, tools: readonly string[] | undefined): string {
   const { tool, companions } = DELEGATION_BACKENDS[backend];
   const vetted = tools ?? [tool];
   const lines = [
     `Delegate only with \`${tool}\` (${backend}). The adapter resolved this backend for the session, so do not use any other delegation tool.`,
+    `Give every child a role, never your own model: ${ROLE_ARGUMENT[backend]}, using \`pstack:general\` when no other role fits. The host mapping's Delegation section has the rest of this backend's rules.`,
   ];
   if (companions.length > 0) {
     const usable = companions.filter((name) => vetted.includes(name));

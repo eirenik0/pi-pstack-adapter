@@ -9,7 +9,7 @@ import {
   joinModelSpec,
   splitModelSpec,
 } from "./config.ts";
-import { SUBAGENT_TOOL, T3_DELEGATE_TOOL } from "./delegation.ts";
+import { SUBAGENTURA_TOOL, SUBAGENT_TOOL, T3_DELEGATE_TOOL } from "./delegation.ts";
 import { safeEcho } from "./echo.ts";
 import type { ModelFilter } from "./filter.ts";
 import { resolveRole } from "./pools.ts";
@@ -91,6 +91,7 @@ export async function routeDelegation(toolName: string, input: unknown, context:
   if (!isRecord(input)) return UNCHANGED;
   if (toolName === T3_DELEGATE_TOOL) return routeT3(input, context);
   if (toolName === SUBAGENT_TOOL) return routeSubagent(input, context);
+  if (toolName === SUBAGENTURA_TOOL) return routeSubagentura(input, context);
   return UNCHANGED;
 }
 
@@ -283,6 +284,42 @@ async function routeSubagent(args: Record<string, unknown>, context: RouteContex
     changed = true;
   }
   return changed ? { kind: "rewrite", input: next } : UNCHANGED;
+}
+
+/**
+ * pi-subagentura takes the model as `provider/model` in `model` and the level in `thinkingLevel`.
+ * Without `model` it runs the parent's model, and without `thinkingLevel` its own default, which
+ * is not the parent's level, so an inheriting role passes both explicitly.
+ */
+async function routeSubagentura(args: Record<string, unknown>, context: RouteContext): Promise<RouteDecision> {
+  const request = parseModelRequest(args.model);
+  if (request.kind === "concrete") return UNCHANGED;
+  const where = `\`${SUBAGENTURA_TOOL}\` \`model\``;
+  if (request.kind === "invalid") return { kind: "block", reason: blockReason(where, quoted(request), request.problem) };
+  const given = args.thinkingLevel;
+  if (given !== undefined && !(typeof given === "string" && isThinkingLevel(given))) {
+    return {
+      kind: "block",
+      reason: blockReason(where, quoted(request), `\`thinkingLevel\` is not one of ${THINKING_LEVELS.map((level) => `\`${level}\``).join(", ")}. Lower the level with a \`:<level>\` suffix on the role reference instead.`),
+    };
+  }
+  const requested = lowest(request.thinking, given as ThinkingLevel | undefined);
+  const task = typeof args.task === "string" ? args.task : "";
+  const route = await routeReference(request, where, requested, task, context);
+  if (route.kind === "block") return route;
+  const next = structuredClone(args);
+  if (route.kind === "model") {
+    next.model = route.spec.model;
+    if (route.spec.thinking === undefined) delete next.thinkingLevel;
+    else next.thinkingLevel = route.spec.thinking;
+    return { kind: "rewrite", input: next };
+  }
+  if (context.parentModel === undefined) delete next.model;
+  else next.model = context.parentModel;
+  const thinking = context.parentThinking === undefined ? undefined : lowest(requested, context.parentThinking);
+  if (thinking === undefined) delete next.thinkingLevel;
+  else next.thinkingLevel = thinking;
+  return { kind: "rewrite", input: next };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
