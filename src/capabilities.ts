@@ -19,7 +19,8 @@ export interface ToolDescriptor {
 interface CapabilityProbe {
   readonly id: CapabilityId;
   readonly toolName: string;
-  readonly requiredParameters: readonly string[];
+  /** Accepted parameter shapes: the tool must accept every name of at least one. */
+  readonly requiredParameters: readonly (readonly string[])[];
   readonly recommendation: string;
 }
 
@@ -30,7 +31,9 @@ const PROBES: readonly CapabilityProbe[] = [
   {
     id: "structured-question",
     toolName: "ask_user",
-    requiredParameters: ["question", "options"],
+    // pi-ask-user takes one question with options; a Claude-style tool, such as
+    // pi-harness's, takes a `questions` array.
+    requiredParameters: [["question", "options"], ["questions"]],
     recommendation: "Install a structured question provider, for example `pi install npm:pi-ask-user`.",
   },
 ];
@@ -69,7 +72,9 @@ function detectTool(tools: readonly ToolDescriptor[], probe: CapabilityProbe): C
     return { id: probe.id, available: false, recommendation: probe.recommendation };
   }
   const properties = parameterNames(tool.parameters);
-  const missing = probe.requiredParameters.filter((name) => !properties.has(name));
+  const missing = probe.requiredParameters
+    .map((shape) => shape.filter((name) => !properties.has(name)))
+    .reduce((best, next) => (next.length < best.length ? next : best));
   if (missing.length > 0) {
     return {
       id: probe.id,

@@ -47,6 +47,16 @@ test("both capabilities are detected from the tools that provide them", () => {
   );
 });
 
+test("a Claude-style ask_user with a questions array satisfies structured-question", () => {
+  const harness = { name: "ask_user", parameters: { properties: { context: {}, questions: {} } }, sourceInfo: { source: "pi-harness" } };
+  const status = detectCapabilities([SUBAGENT_TOOL, harness])[1];
+  assert.deepEqual([status?.id, status?.available, status?.provider], ["structured-question", true, "pi-harness"]);
+  const partial = { name: "ask_user", parameters: { properties: { question: {} } } };
+  const missing = detectCapabilities([SUBAGENT_TOOL, partial])[1];
+  assert.equal(missing?.available, false);
+  assert.match(missing?.recommendation ?? "", /does not accept options\./);
+});
+
 test("inside T3 Code, delegate_task satisfies delegation ahead of subagent by default", () => {
   const [delegation] = detectCapabilities([SUBAGENT_TOOL, T3_DELEGATE_TOOL], "t3", INSIDE_T3);
   assert.equal(delegation?.available, true);
